@@ -77,8 +77,16 @@ class TextGenBase(ABC):
     @staticmethod
     def _extract_sql_statement(input_string):
         sql_pattern = re.compile(
-            r"(?i)\bSELECT\b.*?\bFROM\b.*?(?:;|$)",  # Matches SQL statements starting with SELECT and containing FROM
+            r"(?i)\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\b[\s\S]*?(?:;|$)",
             re.DOTALL
         )
         match = sql_pattern.search(input_string)
-        return match.group(0).strip() if match else None
+        
+        if match:
+            sql_query = match.group(0).strip()
+            
+            # Clean SQL: Remove extra newlines & whitespace
+            cleaned_sql = ' '.join(sql_query.split())
+
+            return cleaned_sql
+        return None

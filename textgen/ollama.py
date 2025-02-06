@@ -10,14 +10,34 @@ class OllamaClient(TextGenBase):
 
     def construct_sql_payload(self, user_question, db_schema):
         logger.info("Constructing payload for Ollama")
-        prompt = (
-            "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n"
-            f"Generate a SQL query only to answer this question without explanation: `{user_question}`\n"
-            "considering values like true,TRUE,yes,Yes,YES in a case-insensitive manner.\n"
-            "considering values like false,FALSE,no,No,NO in a case-insensitive manner.\n"
-            "DDL statements:\n"
-            f"{db_schema}<|start_header_id|>assistant<|end_header_id|>\n\n"
-        )
+        
+        prompt = f"""You are a SQL expert working with a SQLite database. 
+        Given the following table schema, generate a correct, safe, and structured SQL query for the user's request.
+
+        ### IMPORTANT:
+        - If the query involves **UPDATE** or **DELETE**, use **WHERE** clauses to prevent modifying all records.
+        - If **joining multiple tables**, use **Common Table Expressions (CTEs)**.
+        - Always use **WHERE** conditions to avoid modifying all rows in UPDATE/DELETE.
+        - If **joins** are needed, infer relationships between tables logically.
+        - **For nested queries**, always ensure that subqueries return a valid dataset.
+        - Always return the query inside SQL markdown format: 
+        sql\n[query]\n
+
+        - Do **not** explain your answer.
+
+        **User Question:** {user_question}
+        **Table Schema:** 
+        {db_schema}
+        SQL Query:
+        """
+        # prompt = (
+        #     "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n"
+        #     f"Generate a SQL query only to answer this question without explanation: `{user_question}`\n"
+        #     "considering values like true,TRUE,yes,Yes,YES in a case-insensitive manner.\n"
+        #     "considering values like false,FALSE,no,No,NO in a case-insensitive manner.\n"
+        #     "DDL statements:\n"
+        #     f"{db_schema}<|start_header_id|>assistant<|end_header_id|>\n\n"
+        # )
         return {
             "model": self.model_name,
             "messages": [{"role": "user", "content": prompt}],

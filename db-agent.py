@@ -121,7 +121,7 @@ with st.sidebar:
         
     with st.expander("Show Database Schema"):
         sql_alchemy = SqlAlchemy()
-        schema_info = sql_alchemy.get_db_schema()
+        schema_info = sql_alchemy.show_db_schema()
         st.text(schema_info)
 
     

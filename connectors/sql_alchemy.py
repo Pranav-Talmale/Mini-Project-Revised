@@ -1,6 +1,8 @@
-from sqlalchemy import create_engine, text, inspect
+from sqlalchemy import create_engine, text , MetaData , select, inspect
+from sqlalchemy.types import NullType
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.schema import CreateTable
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -53,22 +55,44 @@ class SqlAlchemy:
         try:
             Session = sessionmaker(bind=self.engine)
             session = Session()
-            query_result = session.execute(text(query))
-            query_result_to_df = pd.DataFrame(query_result.fetchall(), columns=query_result.keys())
-            # print(query_result_to_df)
-            return query_result_to_df
+            
+            print(f"Executing Query: {query}")  # Debugging step
+            
+            result = session.execute(text(query))  # Execute query
+            print(f"Result Object Type: {type(result)}")  # Debugging step
+
+            if query.strip().lower().startswith("select"):
+                fetched_data = result.fetchall()
+                print(f"Fetched Data: {fetched_data}")  # Debugging step
+                print(f"Fetched Data Type: {type(fetched_data)}")  # Debugging step
+                
+                if not fetched_data:
+                    print("No rows returned.")
+                    return "No data found."
+
+                df = pd.DataFrame(fetched_data, columns=result.keys())
+                print("DataFrame created successfully!")  # Debugging step
+                return df
+            else:
+                session.commit()  # Commit for DML queries
+                return "Query executed successfully."
+        
         except Exception as e:
+            session.rollback()  # Rollback in case of error
+            print(f"Error Occurred: {e}")  # Debugging step
             return f"An error occurred: {e}"
+        
         finally:
             session.close()
 
-    def get_db_schema(self):
+
+    def show_db_schema(self):
         schema_info = ""
         try:
             inspector = inspect(self.engine)
-            tables = inspector.get_table_names(schema="public")
+            tables = inspector.get_table_names(schema=self.DB_NAME)
             for table_name in tables:
-                columns = inspector.get_columns(table_name, schema="public")
+                columns = inspector.get_columns(table_name, schema=self.DB_NAME)
                 schema_info += f"Table: {table_name.upper()}\n"
                 for column in columns:
                     column_name = column["name"]
@@ -78,3 +102,54 @@ class SqlAlchemy:
         except Exception as e:
             schema_info = f"Error retrieving schema: {e}"
         return schema_info
+    
+    def get_sample_rows(self, table, sample_row_limit):
+        engine = self.engine
+        command = select(table).limit(sample_row_limit)
+        with engine.connect() as connection:
+            rows = connection.execute(command).fetchall()
+            rows_str = "\n".join("\t".join(str(col)[:100] for col in row) for row in rows)
+        return rows_str
+    
+    def get_db_schema(self, schema=None, sample_rows_in_table_info=3, indexes_in_table_info=False):
+        """Get information about specified tables.
+
+            Follows best practices as specified in: Rajkumar et al, 2022
+            (https://arxiv.org/abs/2204.00498)
+
+            If `sample_rows_in_table_info`, the specified number of sample rows will be
+            appended to each table description. This can increase performance as
+            demonstrated in the paper.
+        """
+        engine = self.engine
+        metadata = MetaData()
+        metadata.reflect(bind=engine, schema=schema)
+        
+        tables = []
+        for table in metadata.sorted_tables:
+            # Exclude tables with SQLite system prefix
+            if table.name.startswith("sqlite_"):
+                continue
+                
+            # Exclude columns with JSON/unsupported datatypes
+            for column in table.columns:
+                if isinstance(column.type, NullType):
+                    table._columns.remove(column)
+                    
+            # Generate table creation statement
+            create_table = str(CreateTable(table).compile(engine))
+            table_info = f"{create_table.rstrip()}"
+            
+            # Add indexes and sample rows
+            if indexes_in_table_info:
+                indexes = engine.execute(f"PRAGMA index_list({table.name})").fetchall()
+                indexes_str = "\n".join([f"Index: {idx[1]}, Unique: {idx[2]}" for idx in indexes])
+                table_info += f"\nTable Indexes:\n{indexes_str}"
+            
+            if sample_rows_in_table_info > 0:
+                sample_rows_str = self.get_sample_rows(table, sample_rows_in_table_info)
+                table_info += f"\nSample Rows:\n{sample_rows_str}"
+            
+            tables.append(table_info)
+            
+        return "\n\n".join(tables)
