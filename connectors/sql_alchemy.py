@@ -3,6 +3,7 @@ from sqlalchemy.types import NullType
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateTable
+from helpers.validation import is_safe_query
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -53,37 +54,36 @@ class SqlAlchemy:
 
     def run_query(self, query):
         try:
+            # Validate query before creating session
+            if not is_safe_query(query):
+                return "Query blocked: Potentially unsafe SQL detected."
+            
             Session = sessionmaker(bind=self.engine)
-            session = Session()
-            
-            print(f"Executing Query: {query}")  # Debugging step
-            
+            session = Session()  # Only create session if query is safe
+
             result = session.execute(text(query))  # Execute query
-            print(f"Result Object Type: {type(result)}")  # Debugging step
 
             if query.strip().lower().startswith("select"):
                 fetched_data = result.fetchall()
-                print(f"Fetched Data: {fetched_data}")  # Debugging step
-                print(f"Fetched Data Type: {type(fetched_data)}")  # Debugging step
                 
                 if not fetched_data:
-                    print("No rows returned.")
                     return "No data found."
 
-                df = pd.DataFrame(fetched_data, columns=result.keys())
-                print("DataFrame created successfully!")  # Debugging step
-                return df
+                return pd.DataFrame(fetched_data, columns=result.keys())
             else:
                 session.commit()  # Commit for DML queries
                 return "Query executed successfully."
         
         except Exception as e:
-            session.rollback()  # Rollback in case of error
-            print(f"Error Occurred: {e}")  # Debugging step
+            if 'session' in locals():  # Ensure session exists before rollback
+                session.rollback()  # Rollback in case of error
             return f"An error occurred: {e}"
         
         finally:
-            session.close()
+            if 'session' in locals():  # Close session only if it was created
+                session.close()
+
+
 
 
     def show_db_schema(self):
