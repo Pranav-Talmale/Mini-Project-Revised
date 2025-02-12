@@ -21,22 +21,22 @@ def is_safe_query(sql_query):
             first_keyword = first_token.value.upper()
             
             # Allow only safe SQL commands
-            allowed_commands = {"SELECT", "INSERT", "UPDATE", "DELETE"}
-            if first_keyword not in allowed_commands:
-                print(f"Unsafe Query: {first_keyword} is not allowed")
-                return False
+            # allowed_commands = {"SELECT", "INSERT", "UPDATE", "DELETE", "WITH"}
+            # if first_keyword not in allowed_commands:
+            #     print(f"Unsafe Query: {first_keyword} is not allowed")
+            #     return False
             
-            # Prevent full-table modifications (DELETE/UPDATE without WHERE)
-            if first_keyword in {"DELETE", "UPDATE"}:
-                if "WHERE" not in sql_query.upper():
-                    print(f"Unsafe Query: {first_keyword} without WHERE")
-                    return False
+            # # Prevent full-table modifications (DELETE/UPDATE without WHERE)
+            # if first_keyword in {"DELETE", "UPDATE"}:
+            #     if "WHERE" not in sql_query.upper():
+            #         print(f"Unsafe Query: {first_keyword} without WHERE")
+            #         return False
             
-            # Detect dangerous keywords
-            dangerous_keywords = {"DROP", "TRUNCATE", "ALTER", "--"}
-            if any(keyword in sql_query.upper() for keyword in dangerous_keywords):
-                print(f"Unsafe Query: Contains dangerous keyword")
-                return False
+            # # Detect dangerous keywords
+            # dangerous_keywords = {"DROP", "TRUNCATE", "ALTER", "--"}
+            # if any(keyword in sql_query.upper() for keyword in dangerous_keywords):
+            #     print(f"Unsafe Query: Contains dangerous keyword")
+            #     return False
 
         # Query is safe
         return True

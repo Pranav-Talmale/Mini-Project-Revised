@@ -2,6 +2,7 @@ import re
 import requests
 import logging
 from abc import ABC, abstractmethod
+import sqlglot
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -71,22 +72,19 @@ class TextGenBase(ABC):
             logging.error(error_message)  # Log the error for debugging purposes
             return error_message
         
-    
-    
 
     @staticmethod
     def _extract_sql_statement(input_string):
-        sql_pattern = re.compile(
-            r"(?i)\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\b[\s\S]*?(?:;|$)",
-            re.DOTALL
-        )
-        match = sql_pattern.search(input_string)
-        
-        if match:
-            sql_query = match.group(0).strip()
-            
-            # Clean SQL: Remove extra newlines & whitespace
-            cleaned_sql = ' '.join(sql_query.split())
+        sql_block_pattern = re.compile(r"```sql\s+([\s\S]+?)\s+```", re.IGNORECASE)
+        sql_match = sql_block_pattern.search(input_string)
 
-            return cleaned_sql
-        return None
+        sql_query = sql_match.group(1).strip() if sql_match else input_string.strip()
+        
+        try:
+            parsed_sql = sqlglot.parse_one(sql_query)
+            logger.info(f"Parsed Query: {parsed_sql}")
+            return parsed_sql.sql()
+        except Exception as e:
+            logging.warning(f"SQL Parsing failed: {e}. Returning raw SQL.")
+            return sql_query  # Return raw SQL if parsing fails
+
