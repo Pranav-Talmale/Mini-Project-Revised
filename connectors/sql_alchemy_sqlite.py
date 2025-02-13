@@ -168,3 +168,28 @@ class SqlAlchemySQLite:
             return schema_info
         except Exception as e:
             return f"Error retrieving DB schema: {e}"
+        
+    def export_to_excel(self, output_path=None):
+        """
+        Exports the SQLite database into an Excel file with each table as a separate sheet.
+
+        :param output_path: The directory where the Excel file will be saved (default: current directory).
+        :return: Path to the saved Excel file or an error message.
+        """
+        try:
+            output_path = output_path or self.db_path
+            excel_file = os.path.join(output_path, f"{self.db_name}.xlsx")
+            inspector = inspect(self.engine)
+            table_names = [table for table in inspector.get_table_names() if not table.startswith("sqlite_")]
+            
+            if not table_names:
+                return "No tables found in the database to export."
+            
+            with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+                for table in table_names:
+                    df = pd.read_sql(f"SELECT * FROM {table}", self.engine)
+                    df.to_excel(writer, sheet_name=table, index=False)
+            
+            return f"Database successfully exported to {excel_file}"        
+        except Exception as e:
+            return f"Error exporting database to Excel: {e}"

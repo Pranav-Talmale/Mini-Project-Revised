@@ -143,7 +143,10 @@ with st.sidebar:
         st.text(schema_info)
 
     with st.expander("Export Data as Excel file"):
-        st.text("In Progress")
+        output_path = st.text_input("Select Output Path:", value=str(Path.cwd()))
+        if st.button("Export"):
+            result = sql_alchemy.export_to_excel(output_path)
+            st.success(result)
 
 # Natural Language Query Input
 nl_query = st.text_area("Ask a question about your data:")
