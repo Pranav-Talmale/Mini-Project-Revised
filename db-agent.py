@@ -65,13 +65,22 @@ with st.sidebar:
                 save_to_env(st.session_state["config"])
                 st.success("Database configuration saved!")
 
-# Choose SQLAlchemy class dynamically
-if uploaded_file:
-    st.session_state["db_class"] = "sqlite"
-    sql_alchemy = SqlAlchemySQLite(uploaded_file=uploaded_file, file_type="excel", db_path=st.session_state.config["SQLITE_DB_PATH"], db_name=st.session_state.config["SQLITE_DB_NAME"])  # Use SQLite for file uploads
-else:
-    st.session_state["db_class"] = "generic"
-    sql_alchemy = SqlAlchemy()  # Default to generic SQLAlchemy class
+@st.cache_resource
+def get_sqlalchemy_instance(uploaded_file):
+    if uploaded_file:
+        st.session_state["db_class"] = "sqlite"
+        return SqlAlchemySQLite(
+            uploaded_file=uploaded_file, 
+            file_type="excel", 
+            db_path=st.session_state.config["SQLITE_DB_PATH"], 
+            db_name=st.session_state.config["SQLITE_DB_NAME"]
+        )
+    else:
+        st.session_state["db_class"] = "generic"
+        return SqlAlchemy()  # Default to generic SQLAlchemy class
+
+
+sql_alchemy = get_sqlalchemy_instance(uploaded_file)
 
 with st.sidebar:
     with st.expander("Database Configuration"):
@@ -142,33 +151,44 @@ nl_query = st.text_area("Ask a question about your data:")
 if st.button("▶️  Execute"):
     if nl_query:
         model_name = st.session_state.config.get("MODEL")
-        backend = st.session_state.config.get('LLM_BACKEND')
+        backend = st.session_state.config.get("LLM_BACKEND")
 
         with st.spinner(f"Generating SQL Query using {model_name}"):
             inference_client = LLMClientFactory.get_client(
                 backend=backend,
-                server_url=st.session_state.config.get('LLM_ENDPOINT'),
+                server_url=st.session_state.config.get("LLM_ENDPOINT"),
                 model_name=model_name,
                 api_key=st.session_state.config.get("LLM_API_KEY")
             )
+            sql_query = inference_client.generate_sql(nl_query, schema_info)  # ✅ Moved here
 
-        sql_query = inference_client.generate_sql(nl_query, schema_info)
+        if not sql_query:  # ✅ Check if query generation failed
+            st.error("SQL Query generation failed. Please try again.")
+            st.stop()
 
         st.text(f"Generated SQL Query: LLM backend {backend} serving {model_name}")
         st.code(sql_query, language="sql")
 
+        # ✅ Ensure query history exists before appending
+        if "query_history" not in st.session_state:
+            st.session_state.query_history = []
         st.session_state.query_history.append((nl_query, sql_query))
         save_query_history(st.session_state["query_history"])
 
         with st.spinner(f"Executing SQL on {st.session_state.config['DB_DRIVER']}"):
             query_result = sql_alchemy.run_query(sql_query)
-            if isinstance(query_result, str):
-                st.error(f"Error: {query_result}")
+
+            if isinstance(query_result, str) and "error" in query_result.lower():
+                st.error(f"SQL Execution Error: {query_result}")
             else:
                 st.success("Query executed successfully!")
-                if isinstance(query_result, pd.DataFrame) and not query_result.empty:
+
+                if isinstance(query_result, pd.DataFrame):
                     st.subheader("Query Results")
-                    st.dataframe(query_result)
+                    if not query_result.empty:
+                        st.dataframe(query_result)
+                    else:
+                        st.info("Query executed successfully, but no data was returned.")
 
     else:
         st.warning("Please enter a natural language query.")

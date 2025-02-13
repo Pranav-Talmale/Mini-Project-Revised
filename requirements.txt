@@ -9,3 +9,4 @@ kagglehub
 openai
 google-generativeai
 sqlparse
+sqlglot

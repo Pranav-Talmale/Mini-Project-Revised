@@ -2,8 +2,10 @@ from sqlalchemy import create_engine, text, MetaData, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import CreateTable
 from helpers.validation import is_safe_query
+from sqlalchemy.orm import sessionmaker
 import pandas as pd
 import os
+import re
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -35,6 +37,21 @@ class SqlAlchemySQLite:
         if uploaded_file and file_type:
             self.load_uploaded_file_to_sqlite(uploaded_file, file_type)
 
+    @staticmethod
+    def clean_column_names(df):
+        """
+        Cleans column names to be SQL-friendly:
+        - Strips leading/trailing spaces
+        - Replaces spaces with underscores
+        - Removes special characters except underscores
+        - Ensures lowercase formatting
+        """
+        df.columns = [
+            re.sub(r'[^a-zA-Z0-9_]', '', col.strip().replace(' ', '_')).lower()
+            for col in df.columns
+        ]
+        return df
+
     def load_uploaded_file_to_sqlite(self, file, file_type):
         """
         Loads an uploaded Excel or CSV file directly into SQLite, using the database name as the table name.
@@ -50,6 +67,10 @@ class SqlAlchemySQLite:
             else:
                 raise ValueError("Unsupported file type. Use 'excel' or 'csv'.")
 
+            # Clean column names
+            df = self.clean_column_names(df)
+
+            # Load data into SQLite
             df.to_sql(self.table_name, con=self.engine, if_exists='replace', index=False)
             print(f"Data successfully loaded into '{self.table_name}'.")
         except Exception as e:
@@ -57,24 +78,45 @@ class SqlAlchemySQLite:
 
     def run_query(self, query):
         """
-        Runs a given SQL query on the SQLite database.
+        Runs a given SQL query on the SQLite database without using a session.
 
         :param query: SQL query string.
-        :return: Query results as a Pandas DataFrame or error message.
+        :return: Query results as a Pandas DataFrame or success/error message.
         """
         try:
-            if not is_safe_query(query):
-                return "Query blocked: Potentially unsafe SQL detected."
-
             with self.engine.connect() as connection:
-                result = connection.execute(text(query))
-                if query.strip().lower().startswith("select"):
-                    data = result.fetchall()
-                    return pd.DataFrame(data, columns=result.keys()) if data else "No data found."
-                else:
-                    return "Query executed successfully."
+                transaction = connection.begin()  # Begin transaction (for non-SELECT queries)
+                
+                try:
+                    result = connection.execute(text(query))
+
+                    if query.strip().lower().startswith("select"):
+                        data = result.fetchall()
+                        return pd.DataFrame(data, columns=result.keys()) if data else "No data found."
+                    
+                    else:
+                        affected_rows = result.rowcount  # ✅ Get number of rows affected
+                        transaction.commit()  # ✅ Commit changes for UPDATE/INSERT/DELETE
+                        
+                        if affected_rows == 0:
+                            message = "Query executed successfully, but no rows were affected."
+                            print("Warning:", message)
+                            return message
+                        
+                        message = f"Query executed successfully. Rows affected: {affected_rows}"
+                        print(message)
+                        return message
+
+                except Exception as inner_e:
+                    transaction.rollback()  # ❌ Rollback if error occurs
+                    error_message = f"Query execution failed: {inner_e}"
+                    print("Error:", error_message)
+                    return error_message
+
         except Exception as e:
-            return f"An error occurred: {e}"
+            error_message = f"An error occurred: {e}"
+            print("Critical Error:", error_message)
+            return error_message
 
     def show_db_schema(self):
         """
