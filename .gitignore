@@ -7,3 +7,4 @@ application.log
 query_history.json
 *.db
 *.xlsx
+*venv
