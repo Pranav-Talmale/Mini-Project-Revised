@@ -10,3 +10,5 @@ openai
 google-generativeai
 sqlparse
 sqlglot
+openpyxl
+xlsxwriter
