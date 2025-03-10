@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from connectors.sql_alchemy import SqlAlchemy
 from textgen.factory import LLMClientFactory
-
+from dashboard_integration import create_dashboard_page
 from helpers.query_history import * 
 from helpers.config_store import *
 from helpers.css_settings import *
@@ -29,13 +29,15 @@ load_dotenv()
 
 st.set_page_config(page_title="ChatBot", page_icon="assets/logo.png")
 st.title("Yet Another ChatBot 🤖")
+
+
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
 with st.sidebar:
     st.page_link('db-agent.py', label='DB Agent', icon='📊')
     st.page_link('pages/ChatBot.py', label='Yet Another ChatBot', icon='🤖')
-
+    st.page_link('pages/dashboard.py', label='Analytics Dashboard', icon='📊')
 
 # Streamlit App Interface
 

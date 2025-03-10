@@ -1,78 +1,166 @@
 # DocGene
 
-[![Docker Image CI](https://github.com/db-agent/db-agent/actions/workflows/docker-image.yml/badge.svg)](https://github.com/db-agent/db-agent/actions/workflows/docker-image.yml)
+DocGene is an educational data management system with natural language query capabilities, batch formation for student groups, and RESTful API support for mobile applications.
 
-## Running the model locally with Ollama
+## Features
 
-- MacOS or X86/Nvidia based machines should have enough GPU memory to support the models.
-- Download and Install Ollama and docker
-- Pull the Llama3.2:1b model
+- **Natural Language Database Queries**: Talk to your database in plain English
+- **Student Batch Formation**: Group students based on their subject combinations
+- **Interactive Analytics**: Visualize student and subject data
+- **Mobile API**: Comprehensive REST API for mobile integration
+- **Excel/CSV Import**: Import data directly from spreadsheets
+- **Multi-Database Support**: Works with SQLite, PostgreSQL, MySQL, and more
 
-```
-curl http://localhost:11434/api/pull -d '{
-  "model": "deepseek-r1"
-}'
-```
+## Getting Started
 
-- Validate if Ollama is serving the model
+### Prerequisites
 
-```
-curl http://localhost:11434/api/chat -d '{
-  "model": "deepseek-r1",
-  "messages": [
-    {
-      "role": "user",
-      "content": "why is the sky blue?"
-    }
-  ],
-  "stream": false
-}'
+- Python 3.8+
+- pip package manager
+- PostgreSQL (optional, SQLite works out of the box)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/docgene.git
+cd docgene
 ```
 
-- Launch the application with Sample database ( PostgreSQL )
-
-```
-docker compose -f docker-compose.local.yml build
-docker compose -f docker-compose.local.yml up -d
-# Check logs
-docker compose -f docker-compose.local.yml logs -f
-
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-- Access the application at `http://localhost:8501`
-- Setup DB configuration as below
+3. Set up your environment variables by creating a `.env` file:
+```
+# Database Configuration
+SQLITE_DB_DRIVER=sqlite
+SQLITE_DB_PATH=.
+SQLITE_DB_NAME=students
 
-<img width="493" alt="image" src="https://github.com/user-attachments/assets/490e5469-e299-471b-8c9c-fa0e002f2bb6">
+# LLM Configuration (if using)
+LLM_BACKEND=gemini
+LLM_API_KEY=your_api_key_here
+LLM_ENDPOINT=https://generativelanguage.googleapis.com
+```
 
-- Setup the Model configuration as below ( ensure LLM_ENDPOINT is your computers IP address )
-  <img width="480" alt="image" src="https://github.com/user-attachments/assets/d7b6e8c0-85e5-4b17-954a-3b79187d5c95">
+### Running the Application
 
-## Running on Cloud
-
-- Run the application + model on Nvidia GPUs A100, H100
-
-### Huggingface Models ( TGI )
+Start the Streamlit web interface:
 
 ```bash
-export HF_TOKEN=<YOUR TOKEN>
-docker compose -f docker-compose.tgi.yml build
-docker compose -f docker-compose.tgi.yml up -d
+streamlit run db-agent.py
 ```
 
-### Other supported model
+The application will be available at `http://localhost:8501`
 
-- defog/llama-3-sqlcoder-8b
-- meta-llama/Llama-3.2-1B-Instruct
-- microsoft/Phi-3.5-mini-instruct
-- google/gemma-2-2b-it
-- meta-llama/Llama-3.2-1B-Instruct
+## Usage Guide
+
+### Database Setup
+
+1. Navigate to the "Database Configuration" section in the sidebar
+2. Select your database driver (SQLite, PostgreSQL, MySQL, etc.)
+3. Enter your connection details
+4. Click "Save DB Config"
+
+### Importing Data
+
+1. Go to the "Import Data From Excel or CSV" section
+2. Upload your Excel or CSV file
+3. Configure the database name and path
+4. Click "Save Config"
+
+### Querying Your Data
+
+1. Type your natural language query in the text area
+2. Click "Execute" to run the query
+3. View the generated SQL and results
+
+### Batch Formation
+
+1. Navigate to the "Batch Formation" page
+2. Select a division
+3. Set the number of batches
+4. Click "Generate Batches"
+5. Review and save the batch assignments
+
+## API Server
+
+DocGene includes a REST API for mobile application integration.
+
+### Starting the API Server
+
+```bash
+python -m api.main
+```
+
+The API will be available at `http://localhost:8000`. Interactive documentation can be accessed at `http://localhost:8000/docs`.
+
+### API Endpoints
+
+- `/api/students` - Student management
+- `/api/subjects` - Subject management
+- `/api/enrollments` - Enrollment tracking
+- `/api/batches` - Batch formation
+- `/api/analytics` - Data analytics
+
+## Docker Support
+
+You can also run DocGene using Docker:
+
+```bash
+# Build the Docker image
+docker build -t docgene .
+
+# Run the container
+docker run -p 8501:8501 -p 8000:8000 docgene
+```
+
+## Project Structure
 
 ```
-# Deploy with docker on Linux:
-docker run --gpus all \
-	-v ~/.cache/huggingface:/root/.cache/huggingface \
- 	-e HF_TOKEN=$HF_TOKEN \
-	-p 8000:80 \
-	ghcr.io/huggingface/text-generation-inference:latest \
-	--model-id $MODEL
+docgene/
+├── api/                 # API implementation
+│   ├── middleware/      # Database middleware
+│   └── routes/          # API endpoints
+├── connectors/          # Database connectors
+├── helpers/             # Utility functions
+├── pages/               # Streamlit pages
+├── scripts/             # Database scripts
+├── db-agent.py          # Main application entry point
+├── batch_utils.py       # Batch formation utilities
+├── dashboard_integration.py  # Analytics dashboard
+└── setup_batch_database.py   # Database setup script
 ```
+
+## Development
+
+### Adding New Features
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Running Tests
+
+```bash
+# Run API tests
+pytest api/tests/
+
+# Run web interface tests
+pytest tests/
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- SQLAlchemy for database ORM
+- Streamlit for the web interface
+- FastAPI for the REST API
+- Plotly for data visualization

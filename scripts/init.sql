@@ -13,8 +13,6 @@ CREATE TABLE IF NOT EXISTS Employee (
     FOREIGN KEY (department_id) REFERENCES Department(department_id)
 );
 
-
-
 -- Insert sample data into Department table (with UNIQUE constraint)
 INSERT INTO Department (department_name) 
 VALUES
