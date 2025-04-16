@@ -1,0 +1,4 @@
+2025-03-25 11:30:10,576 [INFO] __main__: Starting DocGene API server on 0.0.0.0:8000
+2025-03-25 11:31:57,959 [INFO] api.routes.students: Getting students with filters: division=None, batch=None, limit=100
+2025-03-25 11:31:57,972 [ERROR] api.middleware.database: Error executing query: (sqlite3.OperationalError) unable to open database file
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

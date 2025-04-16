@@ -163,7 +163,8 @@ if st.button("▶️  Execute"):
                 model_name=model_name,
                 api_key=st.session_state.config.get("LLM_API_KEY")
             )
-            sql_query = inference_client.generate_sql(nl_query, schema_info)  # ✅ Moved here
+            schema_info_detail = sql_alchemy.get_db_schema
+            sql_query = inference_client.generate_sql(nl_query, schema_info_detail)  # ✅ Moved here
 
         if not sql_query:  # ✅ Check if query generation failed
             st.error("SQL Query generation failed. Please try again.")

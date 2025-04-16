@@ -29,7 +29,8 @@ def load_from_env():
             "LLM_BACKEND": os.getenv("LLM_BACKEND", 'ollama'),
             "LLM": os.getenv("LLM"),
             "LLM_API_KEY": os.getenv("LLM_API_KEY"),
-            "LLM_ENDPOINT": os.getenv("LLM_ENDPOINT")
+            "LLM_ENDPOINT": os.getenv("LLM_ENDPOINT"),
+            "MODEL": os.getenv("MODEL")
         }
     
 

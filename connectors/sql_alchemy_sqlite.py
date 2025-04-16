@@ -137,6 +137,32 @@ class SqlAlchemySQLite:
             return schema_info
         except Exception as e:
             return f"Error retrieving schema: {e}"
+        
+    def show_db_schema_md(self):
+        """
+        Retrieves and returns the database schema information in Markdown format.
+
+        :return: Database schema as a Markdown formatted string.
+        """
+        try:
+            inspector = inspect(self.engine)
+            tables = inspector.get_table_names()
+            schema_info = ""
+
+            for table in tables:
+                schema_info += f"### Table: `{table.upper()}`\n\n"
+                schema_info += "| Column Name | Data Type |\n"
+                schema_info += "|------------|----------|\n"
+
+                columns = inspector.get_columns(table)
+                for column in columns:
+                    schema_info += f"| `{column['name']}` | `{column['type']}` |\n"
+
+                schema_info += "\n"  # Add space between tables
+
+            return schema_info
+        except Exception as e:
+            return f"**Error retrieving schema:** `{e}`"
 
     def get_db_schema(self, sample_rows=3, include_indexes=False):
         """

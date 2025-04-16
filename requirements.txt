@@ -12,3 +12,7 @@ sqlparse
 sqlglot
 openpyxl
 xlsxwriter
+tabulate
+fastapi
+uvicorn
+python-multipart
